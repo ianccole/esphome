@@ -1,0 +1,118 @@
+esphome:
+  name: nodemcu
+
+esp8266:
+  board: nodemcuv2
+
+globals:
+  - id: show_colon
+    type: bool
+    initial_value: 'true'
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "ijU/oxNagAUKlml+9eoY5pYfjJfpDiEg6P+PJeqHUlE="
+
+ota:
+  - platform: esphome
+    password: "9807ecc1b22f0f011e4a76da3d573309"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  #use_address: nodemcu.local
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Nodemcu Fallback Hotspot"
+    password: "bq04JWs0Kg8b"
+
+# Example configuration entry
+light:
+  - platform: status_led
+    name: "NodeMCU LED"
+    id: led_light
+    pin:
+      number: D4
+      inverted: yes
+    
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 0   # GPIO0 / FLASH button
+      mode: INPUT_PULLUP
+      inverted: yes
+    name: "NodeMCU Button"
+    on_press:
+      then:
+        - light.toggle: led_light  # example action
+
+font:
+  - file: "fonts/Roboto-Regular.ttf"
+    id: my_font
+    size: 16
+    glyphs: "!%+=,-_.:° 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz/"
+    #glyphs: "0123456789"
+
+i2c:
+  sda: D1
+  scl: D2
+  scan: True  # optional, helps find your OLED address
+
+text_sensor:
+  - platform: homeassistant
+    entity_id: sensor.display_time
+    id: ha_time
+    on_value:
+      then:
+        - component.update: oled
+
+sensor:
+  - platform: homeassistant
+    name: "Remote Temperature"
+    id: remote_temperature
+    entity_id: sensor.kitchen_d1_mini_sht30_temperature
+
+  - platform: homeassistant
+    name: "Remote Humidity"
+    id: remote_humidity
+    entity_id: sensor.kitchen_d1_mini_sht30_humidity
+
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          id(show_colon) = !id(show_colon);
+      - component.update: oled
+
+display:
+  - platform: ssd1306_i2c
+    id: oled
+    model: "SSD1306 128x64"
+    address: 0x3C
+    update_interval: never
+    lambda: |-
+      // Always show hours and minutes from HA sensor
+      std::string t = id(ha_time).state.c_str();
+
+      // Add flashing colon if show_colon is true
+      if (!id(show_colon)) {
+        // replace the colon with a space
+        size_t colon_pos = t.find(":");
+        if (colon_pos != std::string::npos) {
+          t[colon_pos] = ' ';
+        }
+      }
+
+      //it.printf(64, 64, id(my_font), TextAlign::CENTER, "%s", t.c_str());
+      it.printf(0, 0, id(my_font), TextAlign::TOP_LEFT, "%s", t.c_str());
+      it.printf(0, 20, id(my_font), "Temp: %.1f C", id(remote_temperature).state);
+      it.printf(0, 40, id(my_font), "Hum: %.1f %%", id(remote_humidity).state);
+      
+captive_portal:
+

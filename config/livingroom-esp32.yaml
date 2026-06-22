@@ -1,0 +1,69 @@
+esphome:
+  name: livingroom-esp32
+
+esp32:
+  board: esp32doit-devkit-v1
+  framework:
+    type: esp-idf
+
+switch:
+  - platform: gpio
+    name: "Living Room Dehumidifier"
+    pin: GPIO2
+
+one_wire:
+  - platform: gpio
+    pin: GPIO23
+
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+  scan: true   # Optional: scans for devices on boot
+
+sensor:
+  - platform: dallas_temp
+    address: 0x3b0417531ec0ff28
+    name: "Living Room Temperature"
+    id: living_room_temp
+    resolution: 12
+    update_interval: 30s
+
+font:
+  - file: "fonts/Arial.ttf"
+    id: font_
+    size: 16
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x64"
+    address: 0x3C
+    rotation: 0
+    lambda: |-
+      it.print(0, 0, id(font_), "Living Room");
+      it.printf(0, 16, id(font_), "Temp: %.1f C", id(living_room_temp).state);
+      
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "ijU/oxNagAUKlml+9eoY5pYfjJfpDiEg6P+PJeqHUlE="
+
+ota:
+  - platform: esphome
+    password: "9807ecc1b22f0f011e4a76da3d573309"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  use_address: livingroom-esp32.local
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Livingroom Fallback Hotspot"
+    password: "bq04JWs0Kg8b"
+
+captive_portal:
+    
